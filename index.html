@@ -51,8 +51,32 @@
             font-size: 1.5rem;
             text-transform: uppercase;
             letter-spacing: 2px;
+            transition: all 0.2s;
+        }
+        .btn-small {
+            font-size: 0.8rem;
+            padding: 8px 16px;
+            margin-top: 1rem;
+            opacity: 0.7;
         }
         .btn:active { background:#00ffcc; color:#000; transform: scale(0.95); }
+        .btn:hover { background: rgba(0,255,204,.3); opacity: 1; }
+        
+        /* Message Box Styling */
+        #message-box {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid #00ffcc;
+            color: #00ffcc;
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-family: monospace;
+            z-index: 100;
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -66,7 +90,10 @@
         <div id="start-screen" class="text-center">
             <h1 class="text-5xl font-black text-cyan-400 mb-4 italic">STAR GUARDIAN</h1>
             <p class="text-gray-400 mb-8 tracking-widest uppercase text-sm">Drag to Move • Auto Fire</p>
-            <button class="btn" onclick="startGame()">Start</button>
+            <div class="flex flex-col items-center gap-4">
+                <button class="btn" onclick="startGame()">Start</button>
+                <button class="btn btn-small" id="fs-btn" onclick="toggleFullscreen()">⛶ Fullscreen</button>
+            </div>
         </div>
 
         <div id="game-over" class="hidden text-center">
@@ -75,6 +102,8 @@
             <button class="btn" onclick="startGame()">Retry</button>
         </div>
     </div>
+
+    <div id="message-box"></div>
 
     <canvas id="gameCanvas"></canvas>
 
@@ -87,6 +116,7 @@
         const startScreen = document.getElementById("start-screen");
         const gameOverScreen = document.getElementById("game-over");
         const finalScoreEl = document.getElementById("final-score");
+        const msgBox = document.getElementById("message-box");
 
         let gameState = "START";
         let score = 0;
@@ -105,6 +135,12 @@
         const INVADER_ROWS = 3;
         const INVADER_COLS = 5;
 
+        function showMessage(text) {
+            msgBox.textContent = text;
+            msgBox.style.display = 'block';
+            setTimeout(() => { msgBox.style.display = 'none'; }, 3000);
+        }
+
         function resize() {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
@@ -112,6 +148,30 @@
         }
         window.addEventListener("resize", resize);
         resize();
+
+        function toggleFullscreen() {
+            try {
+                if (!document.fullscreenElement && !document.webkitFullscreenElement && !document.mozFullScreenElement && !document.msFullscreenElement) {
+                    const docEl = document.documentElement;
+                    const requestFS = docEl.requestFullscreen || docEl.webkitRequestFullscreen || docEl.mozRequestFullScreen || docEl.msRequestFullscreen;
+                    
+                    if (requestFS) {
+                        requestFS.call(docEl).catch(err => {
+                            console.error(err);
+                            showMessage("Fullscreen blocked by browser policy.");
+                        });
+                    } else {
+                        showMessage("Fullscreen not supported on this device.");
+                    }
+                } else {
+                    const exitFS = document.exitFullscreen || document.webkitExitFullscreen || document.mozCancelFullScreen || document.msExitFullscreen;
+                    if (exitFS) exitFS.call(document);
+                }
+            } catch (e) {
+                console.error(e);
+                showMessage("Unable to toggle fullscreen in this environment.");
+            }
+        }
 
         /* ---------- Pointer Events (Unified Touch/Mouse) ---------- */
         canvas.addEventListener("pointerdown", e => {
@@ -244,7 +304,7 @@
 
         function gameLoop(timestamp) {
             if (gameState !== "PLAYING") return;
-            const delta = Math.min(timestamp - lastTime, 33); // Cap delta to prevent teleports
+            const delta = Math.min(timestamp - lastTime, 33); 
             lastTime = timestamp;
 
             ctx.fillStyle = "#050505";
@@ -270,13 +330,11 @@
                 
                 if (inv.x < 10 || inv.x + inv.width > canvas.width - 10) edge = true;
                 
-                // End game condition (Invader reaching player)
                 if (inv.y + inv.height > player.y + 10) {
                     endGame();
                     return;
                 }
 
-                // Random enemy fire
                 if (Math.random() < 0.002) {
                     projectiles.push(new Projectile(inv.x + 15, inv.y + 30, 1, "#ff3366"));
                 }
@@ -287,13 +345,12 @@
                 invaders.forEach(inv => inv.y += 15);
             }
 
-            // Projectile and Collision Logic
             for (let i = projectiles.length - 1; i >= 0; i--) {
                 const p = projectiles[i];
                 p.update(delta);
                 p.draw();
 
-                if (p.dir === -1) { // Player firing
+                if (p.dir === -1) { 
                     for (let j = invaders.length - 1; j >= 0; j--) {
                         const inv = invaders[j];
                         if (p.x > inv.x && p.x < inv.x + inv.width && p.y > inv.y && p.y < inv.y + inv.height) {
@@ -306,7 +363,7 @@
                             break;
                         }
                     }
-                } else { // Enemy firing
+                } else { 
                     if (p.x > player.x && p.x < player.x + player.width && p.y > player.y && p.y < player.y + player.height) {
                         for(let k=0; k<12; k++) particles.push(new Particle(player.x + 22, player.y + 22, "#00ffcc"));
                         projectiles.splice(i, 1);
